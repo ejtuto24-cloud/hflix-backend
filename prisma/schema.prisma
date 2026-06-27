@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== UTILISATEUR =====
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  password          String
+  name              String
+  avatar            String?
+  role              Role      @default(USER)
+  isActive          Boolean   @default(true)
+  isSuspended       Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  subscription      Subscription?
+  payments          Payment[]
+  favorites         Favorite[]
+  watchHistory      WatchHistory[]
+  watchProgress     WatchProgress[]
+
+  @@map("users")
+}
+
+// ===== RÔLES =====
+enum Role {
+  USER
+  ADMIN
+}
+
+// ===== CATÉGORIE =====
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  image       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  movies      Movie[]
+
+  @@map("categories")
+}
+
+// ===== FILM =====
+model Movie {
+  id            String   @id @default(uuid())
+  title         String
+  description   String?
+  thumbnail     String?
+  banner        String?
+  videoUrl      String?
+  trailerUrl    String?
+  duration      Int?
+  releaseYear   Int?
+  rating        Float?   @default(0)
+  views         Int      @default(0)
+  isPublished   Boolean  @default(false)
+  isFeatured    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  categoryId    String
+  category      Category       @relation(fields: [categoryId], references: [id])
+  favorites     Favorite[]
+  watchHistory  WatchHistory[]
+  watchProgress WatchProgress[]
+  subtitles     Subtitle[]
+
+  @@map("movies")
+}
+
+// ===== SOUS-TITRES =====
+model Subtitle {
+  id        String   @id @default(uuid())
+  language  String
+  fileUrl   String
+  createdAt DateTime @default(now())
+
+  // Relations
+  movieId   String
+  movie     Movie    @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@map("subtitles")
+}
+
+// ===== ABONNEMENT =====
+model Subscription {
+  id          String             @id @default(uuid())
+  status      SubscriptionStatus @default(INACTIVE)
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  // Relations
+  userId      String             @unique
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+// ===== STATUT ABONNEMENT =====
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+  PENDING
+}
+
+// ===== PAIEMENT =====
+model Payment {
+  id              String        @id @default(uuid())
+  amount          Float
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  screenshot      String?
+  transactionRef  String?
+  notes           String?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+// ===== MÉTHODE DE PAIEMENT =====
+enum PaymentMethod {
+  MONCASH
+  NATCASH
+  BANK_TRANSFER
+}
+
+// ===== STATUT PAIEMENT =====
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ===== FAVORIS =====
+model Favorite {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movieId   String
+  movie     Movie    @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@map("favorites")
+}
+
+// ===== HISTORIQUE =====
+model WatchHistory {
+  id        String   @id @default(uuid())
+  watchedAt DateTime @default(now())
+
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movieId   String
+  movie     Movie    @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@map("watch_history")
+}
+
+// ===== PROGRESSION DE LECTURE =====
+model WatchProgress {
+  id          String   @id @default(uuid())
+  progress    Int      @default(0)
+  duration    Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movieId     String
+  movie       Movie    @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@map("watch_progress")
+}
+
+// ===== BANNIÈRE =====
+model Banner {
+  id          String   @id @default(uuid())
+  title       String
+  image       String
+  link        String?
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("banners")
+}
+
+// ===== MESSAGE ADMIN =====
+model AdminMessage {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@map("admin_messages")
+}
