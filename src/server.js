@@ -49,6 +49,7 @@ const categoryRoutes = require('./routes/categoryRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 // ===== CONNEXION DES ROUTES =====
 app.use('/api/auth', authRoutes);
@@ -57,6 +58,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // ===== ROUTE DE TEST =====
 app.get('/', (req, res) => {
@@ -81,7 +83,7 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`🚀 Serveur HFlix démarré sur le port ${PORT}`);
       console.log(`📡 URL : http://localhost:${PORT}`);
-      console.log(`🌍 Environnement : ${process.env.NODE_ENV}`);
+      console.log(`🌍 Environnement : ${process.env.NODE_END}`);
     });
   } catch (error) {
     console.error('❌ Erreur au démarrage du serveur:', error);
