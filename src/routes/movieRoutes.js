@@ -20,8 +20,7 @@ router.get('/featured', getFeaturedMovies);
 // ===== ROUTES PROTÉGÉES (abonnement requis) =====
 
 // Tous les films
-router.get('/', authenticate, checkSubscription, getAllMovies);
-
+router.get('/', authenticate, getAllMovies);
 // Nouveautés
 router.get('/new', authenticate, checkSubscription, getNewMovies);
 
