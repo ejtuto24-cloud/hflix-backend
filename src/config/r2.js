@@ -3,13 +3,27 @@ const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 
+// ===== NETTOYAGE DES VARIABLES =====
+const endpoint = (process.env.R2_ENDPOINT || '').trim();
+const accessKeyId = (process.env.R2_ACCESS_KEY_ID || '').trim();
+const secretAccessKey = (process.env.R2_SECRET_ACCESS_KEY || '').trim();
+const bucketName = (process.env.R2_BUCKET_NAME || '').trim();
+const publicUrl = (process.env.R2_PUBLIC_URL || '').trim();
+
+console.log('R2 Config:', {
+  endpoint,
+  accessKeyIdLength: accessKeyId.length,
+  secretLength: secretAccessKey.length,
+  bucketName,
+});
+
 // ===== CONFIGURATION R2 =====
 const r2Client = new S3Client({
   region: 'auto',
-  endpoint: process.env.R2_ENDPOINT,
+  endpoint,
   credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+    accessKeyId,
+    secretAccessKey,
   },
 });
 
@@ -20,7 +34,7 @@ const uploadFile = async (file, folder = 'videos') => {
     const fileName = `${folder}/${uuidv4()}${extension}`;
 
     const command = new PutObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME,
+      Bucket: bucketName,
       Key: fileName,
       Body: file.buffer,
       ContentType: file.mimetype,
@@ -28,9 +42,8 @@ const uploadFile = async (file, folder = 'videos') => {
 
     await r2Client.send(command);
 
-    // Retourner l'URL publique
-    const publicUrl = `${process.env.R2_PUBLIC_URL}/${fileName}`;
-    return { success: true, url: publicUrl, key: fileName };
+    const url = `${publicUrl}/${fileName}`;
+    return { success: true, url, key: fileName };
 
   } catch (error) {
     console.error('Erreur upload R2:', error);
@@ -42,7 +55,7 @@ const uploadFile = async (file, folder = 'videos') => {
 const deleteFile = async (key) => {
   try {
     const command = new DeleteObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME,
+      Bucket: bucketName,
       Key: key,
     });
 
@@ -55,11 +68,11 @@ const deleteFile = async (key) => {
   }
 };
 
-// ===== GÉNÉRER URL SIGNÉE (pour streaming privé) =====
+// ===== GÉNÉRER URL SIGNÉE =====
 const getSignedStreamUrl = async (key, expiresIn = 3600) => {
   try {
     const command = new GetObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME,
+      Bucket: bucketName,
       Key: key,
     });
 
