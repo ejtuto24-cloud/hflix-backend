@@ -17,11 +17,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ===== MIDDLEWARES DE SÉCURITÉ =====
-
-// Protection contre les attaques courantes
 app.use(helmet());
 
-// Autoriser les requêtes depuis d'autres applications
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
@@ -29,17 +26,9 @@ app.use(cors({
 }));
 
 // ===== MIDDLEWARES DE BASE =====
-
-// Lire le JSON des requêtes
 app.use(express.json());
-
-// Lire les données des formulaires
 app.use(express.urlencoded({ extended: true }));
-
-// Afficher les logs des requêtes dans le terminal
 app.use(morgan('dev'));
-
-// Servir les fichiers uploadés
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ===== IMPORTATION DES ROUTES =====
@@ -50,6 +39,7 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const paymentInfoRoutes = require('./routes/paymentInfoRoutes');
 
 // ===== CONNEXION DES ROUTES =====
 app.use('/api/auth', authRoutes);
@@ -59,6 +49,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/payment-info', paymentInfoRoutes);
 
 // ===== ROUTE DE TEST =====
 app.get('/', (req, res) => {
@@ -73,17 +64,13 @@ app.get('/', (req, res) => {
 // ===== DÉMARRAGE DU SERVEUR =====
 const startServer = async () => {
   try {
-    // Connexion à la base de données
     await connectDatabase();
-
-    // Démarrage des tâches automatiques
     startCronJobs();
 
-    // Démarrage du serveur
     app.listen(PORT, () => {
       console.log(`🚀 Serveur HFlix démarré sur le port ${PORT}`);
       console.log(`📡 URL : http://localhost:${PORT}`);
-      console.log(`🌍 Environnement : ${process.env.NODE_END}`);
+      console.log(`🌍 Environnement : ${process.env.NODE_ENV}`);
     });
   } catch (error) {
     console.error('❌ Erreur au démarrage du serveur:', error);
@@ -91,5 +78,4 @@ const startServer = async () => {
   }
 };
 
-// Lancer le serveur
 startServer();
