@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
 const { prisma } = require('../config/database');
 const {
   successResponse,
@@ -7,6 +8,11 @@ const {
   validationError,
   unauthorizedResponse,
 } = require('../utils/response');
+const {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+  sendWelcomeEmail,
+} = require('../utils/emailService');
 
 const generateToken = (user) => {
   return jwt.sign(
@@ -16,6 +22,7 @@ const generateToken = (user) => {
   );
 };
 
+// ===== CRÉER UN COMPTE =====
 const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -43,14 +50,84 @@ const register = async (req, res) => {
     await prisma.subscription.create({
       data: { userId: user.id, status: 'INACTIVE' },
     });
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await prisma.emailVerification.create({
+      data: { email: email.toLowerCase(), code, expiresAt },
+    });
+    await sendVerificationEmail(email, code, name);
     const token = generateToken(user);
-    return successResponse(res, { user, token }, 'Compte créé avec succès.', 201);
+    return successResponse(res, { user, token }, 'Compte créé. Vérifiez votre email.', 201);
   } catch (error) {
     console.error('Erreur register:', error);
     return errorResponse(res, 'Erreur lors de la création du compte.');
   }
 };
 
+// ===== VÉRIFIER EMAIL =====
+const verifyEmail = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return validationError(res, 'Email et code sont obligatoires.');
+    }
+    const verification = await prisma.emailVerification.findFirst({
+      where: { email: email.toLowerCase(), code },
+    });
+    if (!verification) {
+      return validationError(res, 'Code invalide.');
+    }
+    if (new Date() > verification.expiresAt) {
+      return validationError(res, 'Code expiré. Demandez un nouveau code.');
+    }
+    await prisma.user.update({
+      where: { email: email.toLowerCase() },
+      data: { isEmailVerified: true },
+    });
+    await prisma.emailVerification.deleteMany({
+      where: { email: email.toLowerCase() },
+    });
+    await sendWelcomeEmail(email, '');
+    return successResponse(res, {}, 'Email vérifié avec succès.');
+  } catch (error) {
+    console.error('Erreur verifyEmail:', error);
+    return errorResponse(res, 'Erreur lors de la vérification.');
+  }
+};
+
+// ===== RENVOYER CODE =====
+const resendVerificationCode = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return validationError(res, 'Email obligatoire.');
+    }
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+    if (!user) {
+      return validationError(res, 'Utilisateur non trouvé.');
+    }
+    if (user.isEmailVerified) {
+      return validationError(res, 'Email déjà vérifié.');
+    }
+    await prisma.emailVerification.deleteMany({
+      where: { email: email.toLowerCase() },
+    });
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await prisma.emailVerification.create({
+      data: { email: email.toLowerCase(), code, expiresAt },
+    });
+    await sendVerificationEmail(email, code, user.name);
+    return successResponse(res, {}, 'Nouveau code envoyé.');
+  } catch (error) {
+    console.error('Erreur resendCode:', error);
+    return errorResponse(res, 'Erreur lors de l\'envoi.');
+  }
+};
+
+// ===== CONNEXION =====
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -80,6 +157,7 @@ const login = async (req, res) => {
       email: user.email,
       role: user.role,
       avatar: user.avatar,
+      isEmailVerified: user.isEmailVerified,
     };
     return successResponse(res, { user: userData, token }, 'Connexion réussie.');
   } catch (error) {
@@ -88,6 +166,68 @@ const login = async (req, res) => {
   }
 };
 
+// ===== MOT DE PASSE OUBLIÉ =====
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return validationError(res, 'Email obligatoire.');
+    }
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+    if (!user) {
+      return successResponse(res, {}, 'Si cet email existe, vous recevrez un lien.');
+    }
+    await prisma.passwordReset.deleteMany({
+      where: { email: email.toLowerCase() },
+    });
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    await prisma.passwordReset.create({
+      data: { email: email.toLowerCase(), token, expiresAt },
+    });
+    await sendPasswordResetEmail(email, token, user.name);
+    return successResponse(res, {}, 'Lien de réinitialisation envoyé.');
+  } catch (error) {
+    console.error('Erreur forgotPassword:', error);
+    return errorResponse(res, 'Erreur lors de l\'envoi.');
+  }
+};
+
+// ===== RÉINITIALISER MOT DE PASSE =====
+const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return validationError(res, 'Token et nouveau mot de passe obligatoires.');
+    }
+    if (newPassword.length < 6) {
+      return validationError(res, 'Le mot de passe doit contenir au moins 6 caractères.');
+    }
+    const resetRequest = await prisma.passwordReset.findUnique({
+      where: { token },
+    });
+    if (!resetRequest) {
+      return validationError(res, 'Token invalide.');
+    }
+    if (new Date() > resetRequest.expiresAt) {
+      return validationError(res, 'Token expiré. Demandez un nouveau lien.');
+    }
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { email: resetRequest.email },
+      data: { password: hashedPassword },
+    });
+    await prisma.passwordReset.delete({ where: { token } });
+    return successResponse(res, {}, 'Mot de passe réinitialisé avec succès.');
+  } catch (error) {
+    console.error('Erreur resetPassword:', error);
+    return errorResponse(res, 'Erreur lors de la réinitialisation.');
+  }
+};
+
+// ===== MON PROFIL =====
 const getProfile = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
@@ -98,6 +238,7 @@ const getProfile = async (req, res) => {
         email: true,
         avatar: true,
         role: true,
+        isEmailVerified: true,
         createdAt: true,
         subscription: {
           select: { status: true, startDate: true, endDate: true },
@@ -111,6 +252,7 @@ const getProfile = async (req, res) => {
   }
 };
 
+// ===== MODIFIER PROFIL =====
 const updateProfile = async (req, res) => {
   try {
     const { name } = req.body;
@@ -129,6 +271,7 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// ===== CHANGER MOT DE PASSE =====
 const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -138,9 +281,7 @@ const changePassword = async (req, res) => {
     if (newPassword.length < 6) {
       return validationError(res, 'Le nouveau mot de passe doit contenir au moins 6 caractères.');
     }
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-    });
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
     const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
     if (!isPasswordValid) {
       return unauthorizedResponse(res, 'Mot de passe actuel incorrect.');
@@ -157,11 +298,10 @@ const changePassword = async (req, res) => {
   }
 };
 
+// ===== SUPPRIMER COMPTE =====
 const deleteAccount = async (req, res) => {
   try {
-    await prisma.user.delete({
-      where: { id: req.user.id },
-    });
+    await prisma.user.delete({ where: { id: req.user.id } });
     return successResponse(res, {}, 'Compte supprimé avec succès.');
   } catch (error) {
     console.error('Erreur deleteAccount:', error);
@@ -171,7 +311,11 @@ const deleteAccount = async (req, res) => {
 
 module.exports = {
   register,
+  verifyEmail,
+  resendVerificationCode,
   login,
+  forgotPassword,
+  resetPassword,
   getProfile,
   updateProfile,
   changePassword,

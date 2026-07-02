@@ -2,7 +2,11 @@ const express = require('express');
 const router = express.Router();
 const {
   register,
+  verifyEmail,
+  resendVerificationCode,
   login,
+  forgotPassword,
+  resetPassword,
   getProfile,
   updateProfile,
   changePassword,
@@ -11,25 +15,17 @@ const {
 const { authenticate } = require('../middlewares/auth');
 
 // ===== ROUTES PUBLIQUES =====
-
-// Créer un compte
 router.post('/register', register);
-
-// Se connecter
+router.post('/verify-email', verifyEmail);
+router.post('/resend-code', resendVerificationCode);
 router.post('/login', login);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 // ===== ROUTES PROTÉGÉES =====
-
-// Voir mon profil
 router.get('/profile', authenticate, getProfile);
-
-// Modifier mon profil
 router.put('/profile', authenticate, updateProfile);
-
-// Changer mot de passe
 router.put('/change-password', authenticate, changePassword);
-
-// Supprimer mon compte
 router.delete('/delete-account', authenticate, deleteAccount);
 
 module.exports = router;
