@@ -6,7 +6,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const sendVerificationEmail = async (email, code, name) => {
   try {
     await resend.emails.send({
-      from: process.env.EMAIL_FROM,
+      from: 'onboarding@resend.dev',
       to: email,
       subject: '🎬 HFlix - Vérification de votre email',
       html: `
@@ -38,7 +38,7 @@ const sendPasswordResetEmail = async (email, token, name) => {
     const resetLink = `${process.env.APP_URL || 'https://hflix.com'}/reset-password?token=${token}`;
 
     await resend.emails.send({
-      from: process.env.EMAIL_FROM,
+      from: 'onboarding@resend.dev',
       to: email,
       subject: '🔑 HFlix - Réinitialisation de mot de passe',
       html: `
@@ -70,7 +70,7 @@ const sendPasswordResetEmail = async (email, token, name) => {
 const sendWelcomeEmail = async (email, name) => {
   try {
     await resend.emails.send({
-      from: process.env.EMAIL_FROM,
+      from: 'onboarding@resend.dev',
       to: email,
       subject: '🎬 Bienvenue sur HFlix !',
       html: `
