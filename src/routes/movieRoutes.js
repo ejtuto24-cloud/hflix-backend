@@ -8,37 +8,26 @@ const {
   getFeaturedMovies,
   createMovie,
   updateMovie,
+  hideMovie,
+  unhideMovie,
   deleteMovie,
 } = require('../controllers/movieController');
 const { authenticate, authenticateAdmin, checkSubscription } = require('../middlewares/auth');
 
-// ===== ROUTES PUBLIQUES =====
-
-// Films en vedette
+// Routes publiques
 router.get('/featured', getFeaturedMovies);
 
-// ===== ROUTES PROTÉGÉES (abonnement requis) =====
-
-// Tous les films
+// Routes protégées
 router.get('/', authenticate, getAllMovies);
-// Nouveautés
 router.get('/new', authenticate, checkSubscription, getNewMovies);
-
-// Films populaires
 router.get('/popular', authenticate, checkSubscription, getPopularMovies);
-
-// Un seul film
 router.get('/:id', authenticate, checkSubscription, getMovieById);
 
-// ===== ROUTES ADMIN =====
-
-// Ajouter un film
+// Routes admin
 router.post('/', authenticateAdmin, createMovie);
-
-// Modifier un film
 router.put('/:id', authenticateAdmin, updateMovie);
-
-// Supprimer un film
+router.patch('/:id/hide', authenticateAdmin, hideMovie);
+router.patch('/:id/unhide', authenticateAdmin, unhideMovie);
 router.delete('/:id', authenticateAdmin, deleteMovie);
 
 module.exports = router;
