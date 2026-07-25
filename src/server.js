@@ -42,6 +42,7 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const paymentInfoRoutes = require('./routes/paymentInfoRoutes');
 const movieRequestRoutes = require('./routes/movieRequestRoutes');
 const serieRoutes = require('./routes/serieRoutes');
+const sessionRoutes = require('./routes/sessionRoutes');
 
 // ===== CONNEXION DES ROUTES =====
 app.use('/api/auth', authRoutes);
@@ -54,6 +55,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/payment-info', paymentInfoRoutes);
 app.use('/api/movie-requests', movieRequestRoutes);
 app.use('/api/series', serieRoutes);
+app.use('/api/sessions', sessionRoutes);
 
 // ===== ROUTE DE TEST =====
 app.get('/', (req, res) => {
