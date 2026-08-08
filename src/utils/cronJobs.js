@@ -1,42 +1,51 @@
 const cron = require('node-cron');
 const { prisma } = require('../config/database');
 
-// ===== VÉRIFICATION DES ABONNEMENTS EXPIRÉS =====
 const startCronJobs = () => {
 
-  // Tous les jours à minuit
+  // ===== ABONNEMENTS EXPIRÉS (tous les jours à minuit) =====
   cron.schedule('0 0 * * *', async () => {
     console.log('⏰ Vérification des abonnements expirés...');
-
     try {
       const now = new Date();
-
-      // Trouver tous les abonnements actifs expirés
-      const expiredSubscriptions = await prisma.subscription.findMany({
-        where: {
-          status: 'ACTIVE',
-          endDate: { lt: now },
-        },
+      const expired = await prisma.subscription.findMany({
+        where: { status: 'ACTIVE', endDate: { lt: now } },
       });
 
-      if (expiredSubscriptions.length === 0) {
-        console.log('✅ Aucun abonnement expiré trouvé.');
+      if (expired.length === 0) {
+        console.log('✅ Aucun abonnement expiré.');
         return;
       }
 
-      // Mettre à jour le statut
       await prisma.subscription.updateMany({
-        where: {
-          status: 'ACTIVE',
-          endDate: { lt: now },
-        },
+        where: { status: 'ACTIVE', endDate: { lt: now } },
         data: { status: 'EXPIRED' },
       });
 
-      console.log(`✅ ${expiredSubscriptions.length} abonnement(s) marqué(s) comme expiré(s).`);
-
+      console.log(`✅ ${expired.length} abonnement(s) expiré(s).`);
     } catch (error) {
-      console.error('❌ Erreur lors de la vérification des abonnements:', error);
+      console.error('❌ Erreur abonnements:', error);
+    }
+  });
+
+  // ===== DÉSINSTALLATIONS PROBABLES (tous les jours à 1h) =====
+  cron.schedule('0 1 * * *', async () => {
+    console.log('⏰ Détection des désinstallations probables...');
+    try {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+      const result = await prisma.user.updateMany({
+        where: {
+          installDate: { not: null },
+          lastSeenAt: { lt: thirtyDaysAgo },
+          uninstallDate: null,
+        },
+        data: { uninstallDate: new Date() },
+      });
+
+      console.log(`✅ ${result.count} désinstallation(s) probable(s) détectée(s).`);
+    } catch (error) {
+      console.error('❌ Erreur désinstallations:', error);
     }
   });
 

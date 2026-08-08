@@ -22,7 +22,10 @@ model User {
   deviceToken       String?
   currentDeviceId   String?
   installDate       DateTime?
+  lastSeenAt        DateTime?
   uninstallDate     DateTime?
+  appVersion        String?
+  platform          String?
   trialEndsAt       DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -80,25 +83,25 @@ model Category {
 
 // ===== FILM =====
 model Movie {
-  id            String   @id @default(uuid())
-  title         String
-  description   String?
-  thumbnail     String?
-  banner        String?
-  videoUrl      String?
+  id              String   @id @default(uuid())
+  title           String
+  description     String?
+  thumbnail       String?
+  banner          String?
+  videoUrl        String?
   videoUrlMedium  String?
-videoUrlLow     String?
-  trailerUrl    String?
-  duration      Int?
-  releaseYear   Int?
-  rating        Float?   @default(0)
-  views         Int      @default(0)
-  likes         Int      @default(0)
-  isPublished   Boolean  @default(false)
-  isFeatured    Boolean  @default(false)
-  isHidden      Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  videoUrlLow     String?
+  trailerUrl      String?
+  duration        Int?
+  releaseYear     Int?
+  rating          Float?   @default(0)
+  views           Int      @default(0)
+  likes           Int      @default(0)
+  isPublished     Boolean  @default(false)
+  isFeatured      Boolean  @default(false)
+  isHidden        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Relations
   categoryId    String
