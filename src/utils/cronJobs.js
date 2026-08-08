@@ -3,26 +3,32 @@ const { prisma } = require('../config/database');
 
 const startCronJobs = () => {
 
+  // ===== ESSAIS EXPIRÉS (toutes les 5 minutes) =====
+  cron.schedule('*/5 * * * *', async () => {
+    try {
+      const now = new Date();
+      const result = await prisma.subscription.updateMany({
+        where: { status: 'TRIAL', endDate: { lt: now } },
+        data: { status: 'EXPIRED' },
+      });
+      if (result.count > 0) {
+        console.log(`⏰ ${result.count} essai(s) gratuit(s) expiré(s).`);
+      }
+    } catch (error) {
+      console.error('❌ Erreur essais:', error);
+    }
+  });
+
   // ===== ABONNEMENTS EXPIRÉS (tous les jours à minuit) =====
   cron.schedule('0 0 * * *', async () => {
     console.log('⏰ Vérification des abonnements expirés...');
     try {
       const now = new Date();
-      const expired = await prisma.subscription.findMany({
-        where: { status: 'ACTIVE', endDate: { lt: now } },
-      });
-
-      if (expired.length === 0) {
-        console.log('✅ Aucun abonnement expiré.');
-        return;
-      }
-
-      await prisma.subscription.updateMany({
+      const result = await prisma.subscription.updateMany({
         where: { status: 'ACTIVE', endDate: { lt: now } },
         data: { status: 'EXPIRED' },
       });
-
-      console.log(`✅ ${expired.length} abonnement(s) expiré(s).`);
+      console.log(`✅ ${result.count} abonnement(s) expiré(s).`);
     } catch (error) {
       console.error('❌ Erreur abonnements:', error);
     }
@@ -33,7 +39,6 @@ const startCronJobs = () => {
     console.log('⏰ Détection des désinstallations probables...');
     try {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
       const result = await prisma.user.updateMany({
         where: {
           installDate: { not: null },
@@ -42,8 +47,7 @@ const startCronJobs = () => {
         },
         data: { uninstallDate: new Date() },
       });
-
-      console.log(`✅ ${result.count} désinstallation(s) probable(s) détectée(s).`);
+      console.log(`✅ ${result.count} désinstallation(s) probable(s).`);
     } catch (error) {
       console.error('❌ Erreur désinstallations:', error);
     }

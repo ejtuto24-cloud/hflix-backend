@@ -47,9 +47,25 @@ const register = async (req, res) => {
       data: { name, email: email.toLowerCase(), password: hashedPassword },
       select: { id: true, name: true, email: true, role: true, createdAt: true },
     });
+
+    // ===== PÉRIODE D'ESSAI AUTOMATIQUE : 1H30 =====
+    const trialStart = new Date();
+    const trialEnd = new Date(Date.now() + 90 * 60 * 1000);
+
     await prisma.subscription.create({
-      data: { userId: user.id, status: 'INACTIVE' },
+      data: {
+        userId: user.id,
+        status: 'TRIAL',
+        startDate: trialStart,
+        endDate: trialEnd,
+      },
     });
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { trialEndsAt: trialEnd },
+    });
+
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await prisma.emailVerification.create({
@@ -57,7 +73,12 @@ const register = async (req, res) => {
     });
     await sendVerificationEmail(email, code, name);
     const token = generateToken(user);
-    return successResponse(res, { user, token }, 'Compte créé. Vérifiez votre email.', 201);
+
+    return successResponse(res, {
+      user,
+      token,
+      trialMinutes: 90,
+    }, 'Compte créé ! Vous avez 1h30 d\'accès gratuit. Vérifiez votre email.', 201);
   } catch (error) {
     console.error('Erreur register:', error);
     return errorResponse(res, 'Erreur lors de la création du compte.');
@@ -136,6 +157,7 @@ const login = async (req, res) => {
     }
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
+      include: { subscription: true },
     });
     if (!user) {
       return unauthorizedResponse(res, 'Email ou mot de passe incorrect.');
@@ -150,6 +172,14 @@ const login = async (req, res) => {
     if (user.isSuspended) {
       return unauthorizedResponse(res, 'Votre compte est suspendu.');
     }
+
+    // Calculer le temps restant de l'essai
+    let trialMinutesLeft = null;
+    if (user.subscription?.status === 'TRIAL' && user.subscription.endDate) {
+      const diff = new Date(user.subscription.endDate) - new Date();
+      trialMinutesLeft = diff > 0 ? Math.floor(diff / 60000) : 0;
+    }
+
     const token = generateToken(user);
     const userData = {
       id: user.id,
@@ -159,7 +189,11 @@ const login = async (req, res) => {
       avatar: user.avatar,
       isEmailVerified: user.isEmailVerified,
     };
-    return successResponse(res, { user: userData, token }, 'Connexion réussie.');
+    return successResponse(res, {
+      user: userData,
+      token,
+      trialMinutesLeft,
+    }, 'Connexion réussie.');
   } catch (error) {
     console.error('Erreur login:', error);
     return errorResponse(res, 'Erreur lors de la connexion.');
@@ -239,13 +273,22 @@ const getProfile = async (req, res) => {
         avatar: true,
         role: true,
         isEmailVerified: true,
+        trialEndsAt: true,
         createdAt: true,
         subscription: {
           select: { status: true, startDate: true, endDate: true },
         },
       },
     });
-    return successResponse(res, { user }, 'Profil récupéré avec succès.');
+
+    // Calculer le temps restant de l'essai
+    let trialMinutesLeft = null;
+    if (user?.subscription?.status === 'TRIAL' && user.subscription.endDate) {
+      const diff = new Date(user.subscription.endDate) - new Date();
+      trialMinutesLeft = diff > 0 ? Math.floor(diff / 60000) : 0;
+    }
+
+    return successResponse(res, { user, trialMinutesLeft }, 'Profil récupéré avec succès.');
   } catch (error) {
     console.error('Erreur getProfile:', error);
     return errorResponse(res, 'Erreur lors de la récupération du profil.');
