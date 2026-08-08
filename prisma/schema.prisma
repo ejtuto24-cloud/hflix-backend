@@ -253,6 +253,8 @@ model Payment {
   method          PaymentMethod
   status          PaymentStatus @default(PENDING)
   screenshot      String?
+  proofType       String?
+  proofFileName   String?
   transactionRef  String?
   notes           String?
   approvedAt      DateTime?

@@ -10,12 +10,11 @@ const {
 const { authenticate, authenticateAdmin } = require('../middlewares/auth');
 
 // ===== CONFIGURATION MULTER =====
-// Multer garde les fichiers en mémoire avant de les envoyer à R2
 const storage = multer.memoryStorage();
 
 const uploadVideoFile = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 * 1024 }, // 5GB max
+  limits: { fileSize: 5 * 1024 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('video/')) {
       cb(null, true);
@@ -27,7 +26,7 @@ const uploadVideoFile = multer({
 
 const uploadImageFile = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
@@ -37,52 +36,33 @@ const uploadImageFile = multer({
   },
 });
 
-const uploadScreenshotFile = multer({
+// ===== PREUVE DE PAIEMENT : IMAGE OU PDF =====
+const uploadProofFile = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  limits: { fileSize: 15 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    const allowed = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+      'image/heic',
+      'application/pdf',
+    ];
+    if (allowed.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Seuls les fichiers image sont acceptés.'));
+      cb(new Error('Format non accepté. Utilisez JPG, PNG, WEBP ou PDF.'));
     }
   },
 });
 
 // ===== ROUTES ADMIN =====
-
-// Uploader une vidéo
-router.post(
-  '/video/:movieId',
-  authenticateAdmin,
-  uploadVideoFile.single('video'),
-  uploadVideo
-);
-
-// Uploader une miniature
-router.post(
-  '/thumbnail/:movieId',
-  authenticateAdmin,
-  uploadImageFile.single('thumbnail'),
-  uploadThumbnail
-);
-
-// Uploader une bannière
-router.post(
-  '/banner/:movieId',
-  authenticateAdmin,
-  uploadImageFile.single('banner'),
-  uploadBanner
-);
+router.post('/video/:movieId', authenticateAdmin, uploadVideoFile.single('video'), uploadVideo);
+router.post('/thumbnail/:movieId', authenticateAdmin, uploadImageFile.single('thumbnail'), uploadThumbnail);
+router.post('/banner/:movieId', authenticateAdmin, uploadImageFile.single('banner'), uploadBanner);
 
 // ===== ROUTES UTILISATEUR =====
-
-// Uploader une capture d'écran de paiement
-router.post(
-  '/screenshot/:paymentId',
-  authenticate,
-  uploadScreenshotFile.single('screenshot'),
-  uploadPaymentScreenshot
-);
+router.post('/proof/:paymentId', authenticate, uploadProofFile.single('proof'), uploadPaymentScreenshot);
 
 module.exports = router;

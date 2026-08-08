@@ -15,30 +15,20 @@ const uploadVideo = async (req, res) => {
 
     const { movieId } = req.params;
 
-    // Vérifier que le film existe
     const movie = await prisma.movie.findUnique({ where: { id: movieId } });
     if (!movie) {
       return notFoundResponse(res, 'Film non trouvé.');
     }
 
-    // Uploader vers R2
     const result = await uploadFile(req.file, 'videos');
 
     if (!result.success) {
       return errorResponse(res, 'Erreur lors de l\'upload de la vidéo.');
     }
 
-    // Supprimer l'ancienne vidéo si elle existe
-    if (movie.videoUrl && movie.videoKey) {
-      await deleteFile(movie.videoKey);
-    }
-
-    // Mettre à jour le film
     const updatedMovie = await prisma.movie.update({
       where: { id: movieId },
-      data: {
-        videoUrl: result.url,
-      },
+      data: { videoUrl: result.url },
     });
 
     return successResponse(res, {
@@ -66,19 +56,15 @@ const uploadThumbnail = async (req, res) => {
       return notFoundResponse(res, 'Film non trouvé.');
     }
 
-    // Uploader vers R2
     const result = await uploadFile(req.file, 'thumbnails');
 
     if (!result.success) {
       return errorResponse(res, 'Erreur lors de l\'upload de la miniature.');
     }
 
-    // Mettre à jour le film
     const updatedMovie = await prisma.movie.update({
       where: { id: movieId },
-      data: {
-        thumbnail: result.url,
-      },
+      data: { thumbnail: result.url },
     });
 
     return successResponse(res, {
@@ -106,19 +92,15 @@ const uploadBanner = async (req, res) => {
       return notFoundResponse(res, 'Film non trouvé.');
     }
 
-    // Uploader vers R2
     const result = await uploadFile(req.file, 'banners');
 
     if (!result.success) {
       return errorResponse(res, 'Erreur lors de l\'upload de la bannière.');
     }
 
-    // Mettre à jour le film
     const updatedMovie = await prisma.movie.update({
       where: { id: movieId },
-      data: {
-        banner: result.url,
-      },
+      data: { banner: result.url },
     });
 
     return successResponse(res, {
@@ -132,7 +114,7 @@ const uploadBanner = async (req, res) => {
   }
 };
 
-// ===== UPLOADER CAPTURE D'ÉCRAN PAIEMENT =====
+// ===== UPLOADER PREUVE DE PAIEMENT (IMAGE OU PDF) =====
 const uploadPaymentScreenshot = async (req, res) => {
   try {
     if (!req.file) {
@@ -150,30 +132,34 @@ const uploadPaymentScreenshot = async (req, res) => {
       return errorResponse(res, 'Non autorisé.', 403);
     }
 
-    // Uploader vers R2
-    const result = await uploadFile(req.file, 'screenshots');
+    // Uploader vers R2 dans le dossier payment-proofs
+    const result = await uploadFile(req.file, 'payment-proofs');
 
     if (!result.success) {
-      return errorResponse(res, 'Erreur lors de l\'upload de la capture d\'écran.');
+      return errorResponse(res, 'Erreur lors de l\'upload de la preuve.');
     }
 
-    // Mettre à jour le paiement
+    const isPdf = req.file.mimetype === 'application/pdf';
+
     const updatedPayment = await prisma.payment.update({
       where: { id: paymentId },
       data: {
         screenshot: result.url,
+        proofType: isPdf ? 'pdf' : 'image',
+        proofFileName: req.file.originalname,
         status: 'PENDING',
       },
     });
 
     return successResponse(res, {
       payment: updatedPayment,
-      screenshotUrl: result.url,
-    }, 'Capture d\'écran uploadée. En attente de validation.');
+      proofUrl: result.url,
+      proofType: isPdf ? 'pdf' : 'image',
+    }, 'Preuve de paiement envoyée. En attente de validation.');
 
   } catch (error) {
     console.error('Erreur uploadPaymentScreenshot:', error);
-    return errorResponse(res, 'Erreur lors de l\'upload de la capture d\'écran.');
+    return errorResponse(res, 'Erreur lors de l\'upload de la preuve.');
   }
 };
 
