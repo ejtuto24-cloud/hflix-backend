@@ -86,6 +86,8 @@ model Movie {
   thumbnail     String?
   banner        String?
   videoUrl      String?
+  videoUrlMedium  String?
+videoUrlLow     String?
   trailerUrl    String?
   duration      Int?
   releaseYear   Int?
