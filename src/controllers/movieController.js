@@ -111,7 +111,8 @@ const createMovie = async (req, res) => {
   try {
     const {
       title, description, categoryId, thumbnail, banner,
-      videoUrl, trailerUrl, duration, releaseYear, isFeatured,
+      videoUrl, videoUrlMedium, videoUrlLow, trailerUrl,
+      duration, releaseYear, isFeatured,
     } = req.body;
     if (!title || !categoryId) {
       return validationError(res, 'Le titre et la catégorie sont obligatoires.');
@@ -121,7 +122,7 @@ const createMovie = async (req, res) => {
     const movie = await prisma.movie.create({
       data: {
         title, description, categoryId, thumbnail, banner,
-        videoUrl, trailerUrl,
+        videoUrl, videoUrlMedium, videoUrlLow, trailerUrl,
         duration: duration ? parseInt(duration) : null,
         releaseYear: releaseYear ? parseInt(releaseYear) : null,
         isFeatured: isFeatured || false,
@@ -142,7 +143,8 @@ const updateMovie = async (req, res) => {
     const { id } = req.params;
     const {
       title, description, categoryId, thumbnail, banner,
-      videoUrl, trailerUrl, duration, releaseYear, isFeatured, isPublished,
+      videoUrl, videoUrlMedium, videoUrlLow, trailerUrl,
+      duration, releaseYear, isFeatured, isPublished,
     } = req.body;
     const existingMovie = await prisma.movie.findUnique({ where: { id } });
     if (!existingMovie) return notFoundResponse(res, 'Film non trouvé.');
@@ -150,7 +152,7 @@ const updateMovie = async (req, res) => {
       where: { id },
       data: {
         title, description, categoryId, thumbnail, banner,
-        videoUrl, trailerUrl,
+        videoUrl, videoUrlMedium, videoUrlLow, trailerUrl,
         duration: duration ? parseInt(duration) : undefined,
         releaseYear: releaseYear ? parseInt(releaseYear) : undefined,
         isFeatured, isPublished,
