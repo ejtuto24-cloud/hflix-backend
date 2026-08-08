@@ -432,3 +432,14 @@ model PasswordReset {
 
   @@map("password_resets")
 }
+// ===== PARAMÈTRES DE L'APPLICATION =====
+model AppSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@map("app_settings")
+}

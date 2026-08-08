@@ -47,6 +47,7 @@ const likeRoutes = require('./routes/likeRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
 const installRoutes = require('./routes/installRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
 
 // ===== CONNEXION DES ROUTES =====
 app.use('/api/auth', authRoutes);
@@ -64,6 +65,7 @@ app.use('/api/likes', likeRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/install', installRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // ===== ROUTE DE TEST =====
 app.get('/', (req, res) => {

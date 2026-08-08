@@ -11,8 +11,8 @@ const createPayment = async (req, res) => {
   try {
     const { amount, method, transactionRef } = req.body;
 
-    if (!amount || !method) {
-      return validationError(res, 'Montant et méthode de paiement sont obligatoires.');
+    if (!method) {
+      return validationError(res, 'La méthode de paiement est obligatoire.');
     }
 
     const validMethods = ['MONCASH', 'NATCASH', 'BANK_TRANSFER'];
@@ -20,17 +20,27 @@ const createPayment = async (req, res) => {
       return validationError(res, 'Méthode de paiement invalide.');
     }
 
+    // Récupérer le prix depuis les paramètres si non fourni
+    let finalAmount = amount ? parseFloat(amount) : null;
+
+    if (!finalAmount) {
+      const priceSetting = await prisma.appSetting.findUnique({
+        where: { key: 'subscription_price' },
+      });
+      finalAmount = priceSetting ? parseFloat(priceSetting.value) : 500;
+    }
+
     const payment = await prisma.payment.create({
       data: {
         userId: req.user.id,
-        amount: parseFloat(amount),
+        amount: finalAmount,
         method,
         transactionRef,
         status: 'PENDING',
       },
     });
 
-    return successResponse(res, { payment }, 'Demande de paiement créée. Veuillez uploader votre capture d\'écran.', 201);
+    return successResponse(res, { payment }, 'Demande de paiement créée. Veuillez uploader votre preuve de paiement.', 201);
 
   } catch (error) {
     console.error('Erreur createPayment:', error);
@@ -45,7 +55,7 @@ const uploadScreenshot = async (req, res) => {
     const { screenshot } = req.body;
 
     if (!screenshot) {
-      return validationError(res, 'La capture d\'écran est obligatoire.');
+      return validationError(res, 'La preuve de paiement est obligatoire.');
     }
 
     const payment = await prisma.payment.findUnique({ where: { id } });
@@ -66,11 +76,11 @@ const uploadScreenshot = async (req, res) => {
       },
     });
 
-    return successResponse(res, { payment: updatedPayment }, 'Capture d\'écran uploadée. En attente de validation.');
+    return successResponse(res, { payment: updatedPayment }, 'Preuve uploadée. En attente de validation.');
 
   } catch (error) {
     console.error('Erreur uploadScreenshot:', error);
-    return errorResponse(res, 'Erreur lors de l\'upload de la capture d\'écran.');
+    return errorResponse(res, 'Erreur lors de l\'upload de la preuve.');
   }
 };
 
@@ -136,10 +146,16 @@ const approvePayment = async (req, res) => {
       return validationError(res, 'Ce paiement est déjà approuvé.');
     }
 
+    // Récupérer la durée depuis les paramètres
+    const daysSetting = await prisma.appSetting.findUnique({
+      where: { key: 'subscription_days' },
+    });
+    const days = daysSetting ? parseInt(daysSetting.value) : 30;
+
     // Calculer les dates d'abonnement
     const startDate = new Date();
     const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 30);
+    endDate.setDate(endDate.getDate() + days);
 
     // Approuver le paiement
     await prisma.payment.update({
@@ -166,7 +182,7 @@ const approvePayment = async (req, res) => {
       },
     });
 
-    return successResponse(res, {}, 'Paiement approuvé. Abonnement activé pour 30 jours.');
+    return successResponse(res, { days }, `Paiement approuvé. Abonnement activé pour ${days} jours.`);
 
   } catch (error) {
     console.error('Erreur approvePayment:', error);
