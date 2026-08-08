@@ -46,6 +46,7 @@ const sessionRoutes = require('./routes/sessionRoutes');
 const likeRoutes = require('./routes/likeRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
+const installRoutes = require('./routes/installRoutes');
 
 // ===== CONNEXION DES ROUTES =====
 app.use('/api/auth', authRoutes);
@@ -62,6 +63,7 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/api/likes', likeRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/install', installRoutes);
 
 // ===== ROUTE DE TEST =====
 app.get('/', (req, res) => {
